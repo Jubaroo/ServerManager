@@ -37,3 +37,6 @@ class Tooltip:
         if self.tooltip_id:
             self.widget.after_cancel(self.tooltip_id)
             self.tooltip_id = None
+
+    def update_text(self, text):
+        self.text = text

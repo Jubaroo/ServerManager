@@ -15,12 +15,10 @@ class SteamCmdManager:
     STEAMCMD_URL = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip"
     INSTALL_DIR = "C:/SteamCMD"
 
-    @staticmethod
-    def install(progress):
-        """Create a new thread to install SteamCMD."""
+    def install(self, progress):
+        """Public method to install SteamCMD."""
         stop_event = threading.Event()
-        t = threading.Thread(target=SteamCmdManager._install_steamcmd, args=(progress, stop_event))
-        t.start()
+        threading.Thread(target=self._install_steamcmd, args=(progress, stop_event)).start()
 
     @staticmethod
     def _install_steamcmd(progress, stop_event):

@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from tkinter import messagebox
-
 import aiohttp
 
 
@@ -12,9 +11,12 @@ class ApiManager:
     async def fetch_data(self):
         async with aiohttp.ClientSession() as session:
             async with session.get(self.api_url) as response:
-                return await response.json()
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    raise Exception(f"Failed to fetch data: {response.status}")
 
-    async def get_dedicated_servers(self, app_ids, server_menu, server_var, show_selected_appid):
+    async def get_dedicated_servers(self, app_ids, update_server_listbox):
         try:
             data = await self.fetch_data()
             apps = data["applist"]["apps"]
@@ -23,18 +25,11 @@ class ApiManager:
             for dedicated_server in dedicated_servers:
                 app_ids[dedicated_server["name"]] = dedicated_server["appid"]
 
-            sorted_server_names = sorted(app_ids.keys())
-            server_var.set("Choose a game server")
-            server_menu["values"] = sorted_server_names
-            show_selected_appid()
+            update_server_listbox()
         except Exception as e:
             logging.error(f"Error processing the API response: {e}")
             messagebox.showerror("API Error", f"There was an error processing the API response: {str(e)}")
 
-    def get_dedicated_servers_thread(self, app_ids, server_menu, server_var, show_selected_appid):
+    def get_dedicated_servers_thread(self, app_ids, update_server_listbox):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.get_dedicated_servers(app_ids, server_menu, server_var, show_selected_appid))
-
-
-# Ensure logging is configured to capture errors
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+        loop.run_until_complete(self.get_dedicated_servers(app_ids, update_server_listbox))
