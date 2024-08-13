@@ -10,6 +10,13 @@ from tkinter import messagebox
 import requests
 from tqdm import tqdm
 
+# Set up basic logging configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+
+
+def thread_safe_logging(msg):
+    threading.Thread(target=logging.info, args=(msg,)).start()
+
 
 class SteamCmdManager:
     STEAMCMD_URL = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip"
@@ -46,7 +53,7 @@ class SteamCmdManager:
                 file.write(data)
         progress_bar.close()
 
-        logging.info('Downloaded the steamcmd.zip file.')
+        thread_safe_logging('Downloaded the steamcmd.zip file.')
         return steamcmd_zip_path
 
     @staticmethod
@@ -58,7 +65,7 @@ class SteamCmdManager:
         with zipfile.ZipFile(steamcmd_zip_path, 'r') as zip_ref:
             zip_ref.extractall(SteamCmdManager.INSTALL_DIR)
 
-        logging.info('Unzipped the steamcmd.zip file.')
+        thread_safe_logging('Unzipped the steamcmd.zip file.')
 
     @staticmethod
     def _run_steamcmd(progress, stop_event):
@@ -87,7 +94,3 @@ class SteamCmdManager:
         while progress['value'] < target and not stop_event.is_set():
             time.sleep(0.1)  # Delay between each increment
             progress['value'] += 0.2  # Increment the progress bar
-
-
-# Ensure logging is configured to capture errors
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')

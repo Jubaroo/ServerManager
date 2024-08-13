@@ -2,7 +2,7 @@ import tkinter as tk
 
 
 class Tooltip:
-    def __init__(self, widget, text, duration=3000, bg="lightyellow", fg="black", font=("Arial", 10), wraplength=200):
+    def __init__(self, widget, text, duration=4000, bg="lightyellow", fg="black", font=("Arial", 10), wraplength=200):
         self.widget = widget
         self.text = text
         self.duration = duration

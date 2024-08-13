@@ -1,3 +1,4 @@
+import glob
 import logging
 import os
 import subprocess
@@ -5,8 +6,62 @@ import threading
 import time
 from tkinter import messagebox
 
+# Set up basic logging configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+
+
+def thread_safe_logging(msg):
+    threading.Thread(target=logging.info, args=(msg,)).start()
+
 
 class ServerManager:
+    @staticmethod
+    def is_server_installed(install_path, target_appid):
+        """
+        Check if the server with the specified appid is already installed in the given path by reading the appmanifest file.
+        Args:
+            install_path (str): The installation path for the server.
+            target_appid (str): The appid of the server we are verifying.
+        Returns:
+            bool: True if the server is installed, False otherwise.
+        """
+        # Locate all appmanifest files in the directory
+        appmanifest_files = glob.glob(os.path.join(install_path, 'steamapps', 'appmanifest_*.acf'))
+
+        # If no appmanifest files are found, return False
+        if not appmanifest_files:
+            return False
+
+        # Check each appmanifest file
+        for appmanifest_file in appmanifest_files:
+            with open(appmanifest_file, 'r') as f:
+                content = f.read()
+
+                # Check if the appid matches the target appid
+                if f'"appid"\t\t"{target_appid}"' in content:
+                    # Check if "StateFlags" indicates the application is installed
+                    if '"StateFlags"' in content and '"4"' in content:
+                        return True
+
+        # If no matching appmanifest file with the correct appid is found, return False
+        return False
+
+    @staticmethod
+    def install_or_update_server(selected_appid, install_path, progress):
+        """
+        Install or update the server based on whether it is already installed.
+        Args:
+            selected_appid (str): The App ID of the selected server.
+            install_path (str): The installation path for the server.
+            progress (ttk.Progressbar): The progress bar to update.
+        """
+        if ServerManager.is_server_installed(install_path, selected_appid):
+            thread_safe_logging("Server found. Proceeding with update.")
+            ServerManager.update_server(selected_appid, install_path, progress)
+        else:
+            thread_safe_logging("Server not found. Proceeding with installation.")
+            ServerManager.install(selected_appid, install_path, progress)
+
     @staticmethod
     def install(selected_appid, install_path, progress):
         """
@@ -22,6 +77,7 @@ class ServerManager:
 
         install_command = ServerManager.construct_command(selected_appid, install_path, "install")
         ServerManager.run_command(install_command, progress, "Server Installation", "Server installed successfully.")
+        thread_safe_logging("Server installed successfully.")
 
     @staticmethod
     def update_server(selected_appid, install_path, progress):
@@ -34,48 +90,7 @@ class ServerManager:
         """
         update_command = ServerManager.construct_command(selected_appid, install_path, "update")
         ServerManager.run_command(update_command, progress, "Server Update", "Server updated successfully.")
-
-    @staticmethod
-    def backup_server(selected_appid, backup_path):
-        """
-        Backup the server with the given App ID to the specified path.
-        Args:
-            selected_appid (str): The App ID of the selected server.
-            backup_path (str): The backup path for the server.
-        """
-        try:
-            logging.info(f"Backing up server {selected_appid} to {backup_path}")
-            backup_command = f'some_backup_command {selected_appid} {backup_path}'
-            process = subprocess.Popen(backup_command, shell=True)
-            process.wait()
-            if process.returncode == 0:
-                messagebox.showinfo("Server Backup", "Server backup completed successfully.")
-            else:
-                raise Exception(f"Backup failed with return code {process.returncode}")
-        except Exception as e:
-            logging.error(f"Error during server backup: {e}")
-            messagebox.showerror("Server Backup Error", f"Error during server backup: {str(e)}")
-
-    @staticmethod
-    def restore_server(selected_appid, backup_path):
-        """
-        Restore the server with the given App ID from the specified path.
-        Args:
-            selected_appid (str): The App ID of the selected server.
-            backup_path (str): The backup path for the server.
-        """
-        try:
-            logging.info(f"Restoring server {selected_appid} from {backup_path}")
-            restore_command = f'some_restore_command {backup_path} {selected_appid}'
-            process = subprocess.Popen(restore_command, shell=True)
-            process.wait()
-            if process.returncode == 0:
-                messagebox.showinfo("Server Restore", "Server restore completed successfully.")
-            else:
-                raise Exception(f"Restore failed with return code {process.returncode}")
-        except Exception as e:
-            logging.error(f"Error during server restore: {e}")
-            messagebox.showerror("Server Restore Error", f"Error during server restore: {str(e)}")
+        thread_safe_logging("Server updated successfully.")
 
     @staticmethod
     def construct_command(selected_appid, install_path, action):
@@ -93,7 +108,7 @@ class ServerManager:
             f'C:/SteamCMD/steamcmd.exe +login anonymous +force_install_dir "{install_path}" '
             f'+app_update {selected_appid} validate +quit'
         )
-        logging.info(f"Constructed {action} command: {command}")
+        thread_safe_logging(f"Constructed {action} command: {command}")
         return command
 
     @staticmethod
@@ -130,8 +145,4 @@ class ServerManager:
         """
         while progress['value'] < target:
             time.sleep(0.1)  # Delay between each increment
-            progress['value'] += 0.03  # Increment the progress bar
-
-
-# Ensure logging is configured to capture errors
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+            progress['value'] += 0.02  # Increment the progress bar
